@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+      - /run/udev:/run/udev:ro
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    network_mode: host
+    depends_on: [mqtt]
+
+  backend:
+    build: ./backend
+    container_name: smarthome-backend
+    restart: unless-stopped
+    ports: ["8000:8000"]
+    volumes: ["./backend:/app"]
+    depends_on: [mqtt, zigbee2mqtt]
+
+  frontend:
+    build: ./frontend
+    container_name: smarthome-frontend
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    volumes: ["./frontend:/usr/src/app"]
+    stdin_open: true
+    tty: true
+    command: npm start
